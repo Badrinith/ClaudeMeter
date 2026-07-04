@@ -14,6 +14,14 @@ The cost shown is an *estimate of equivalent API list price* for the tokens used
 
 Anthropic doesn't expose your exact plan cap locally, so every limit bar uses a **target you set** (+/- steppers in the panel, persisted). Tune each until it matches where you actually hit that limit.
 
+## Screenshot
+
+<img src="screenshots/claudemeter-popover.png" width="600" alt="ClaudeMeter menu bar icon and popover">
+
+## Download
+
+Grab the latest `ClaudeMeter.dmg` from [Releases](../../releases), or build it yourself below.
+
 ## Build & run
 
 ```bash
