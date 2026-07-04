@@ -21,6 +21,11 @@ struct ContentView: View {
                 limitBar(label: "This week · 7d · all models",
                          sub: Fmt.money(s.weekCost),
                          tokens: s.weekTokens, budget: s.weekBudget, fraction: s.weekFraction)
+                if s.contextTokens > 0 {
+                    limitBar(label: "Context window",
+                             sub: "current conversation",
+                             tokens: s.contextTokens, budget: s.contextBudget, fraction: s.contextFraction)
+                }
             }
 
             if !s.weekSlices.isEmpty {
@@ -168,6 +173,9 @@ struct ContentView: View {
             targetRow("Weekly target", value: s.weekBudget,
                       dec: { model.bumpWeekly(by: -50_000_000) },
                       inc: { model.bumpWeekly(by: 50_000_000) })
+            targetRow("Context window", value: s.contextBudget,
+                      dec: { model.bumpContext(by: -50_000) },
+                      inc: { model.bumpContext(by: 50_000) })
 
             Toggle(isOn: Binding(
                 get: { model.launchAtLogin },
@@ -216,11 +224,11 @@ struct ContentView: View {
     }
 
     private func color(for model: String) -> Color {
-        switch model {
-        case "Opus": return .purple
-        case "Sonnet": return .blue
-        case "Haiku": return .teal
-        default: return .gray
-        }
+        let m = model.lowercased()
+        if m.hasPrefix("opus") { return .purple }
+        if m.hasPrefix("sonnet") { return .blue }
+        if m.hasPrefix("haiku") { return .teal }
+        if m.hasPrefix("fable") { return .pink }
+        return .gray
     }
 }

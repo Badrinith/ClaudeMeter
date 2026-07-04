@@ -51,8 +51,9 @@ final class UsageModel: ObservableObject {
         reload()
     }
 
-    func bumpBudget(by delta: Int) { budget("blockBudgetTokens", min: 1_000_000, delta) }
-    func bumpWeekly(by delta: Int) { budget("weekBudgetTokens", min: 10_000_000, delta) }
+    func bumpBudget(by delta: Int)  { budget("blockBudgetTokens", min: 1_000_000, delta) }
+    func bumpWeekly(by delta: Int)  { budget("weekBudgetTokens", min: 10_000_000, delta) }
+    func bumpContext(by delta: Int) { budget("contextBudgetTokens", min: 50_000, delta) }
 
     // MARK: - Launch at login (macOS 13+)
 

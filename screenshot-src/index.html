@@ -8,7 +8,7 @@
     font-family: -apple-system, "SF Pro Text", "Helvetica Neue", sans-serif;
     background: linear-gradient(160deg, #cfd9e8 0%, #aab8cf 55%, #8fa0bd 100%);
     width: 900px;
-    height: 700px;
+    height: 820px;
     position: relative;
     overflow: hidden;
     -webkit-font-smoothing: antialiased;
@@ -23,7 +23,7 @@
     padding: 0 14px; gap: 16px; font-size: 12.5px; color: #1c1c1e;
   }
   .menubar .icon { opacity: 0.75; }
-  .gauge-chip { display: flex; align-items: center; gap: 4px; font-weight: 500; color: #ff3b30; }
+  .gauge-chip { display: flex; align-items: center; gap: 4px; font-weight: 500; color: #ff9500; }
   .gauge-chip svg { width: 13px; height: 13px; }
 
   .arrow {
@@ -101,7 +101,7 @@
   .target-row { display: flex; align-items: center; margin-bottom: 8px; font-size: 11px; color: #6e6e73; }
   .stepper { margin-left: auto; display: flex; align-items: center; gap: 10px; }
   .stepper svg { width: 12px; height: 12px; color: #6e6e73; }
-  .stepper .v { font-size: 11px; font-weight: 600; color: #1c1c1e; min-width: 34px; text-align: center; }
+  .stepper .v { font-size: 11px; font-weight: 600; color: #1c1c1e; min-width: 40px; text-align: center; }
 
   .toggle-row { display: flex; align-items: center; margin-bottom: 9px; font-size: 11px; color: #6e6e73; }
   .switch { margin-left: auto; width: 30px; height: 17px; background: #34c759; border-radius: 9px; position: relative; }
@@ -118,10 +118,10 @@
     <span class="icon">🔋</span>
     <span class="icon">📶</span>
     <span class="gauge-chip">
-      <svg viewBox="0 0 24 24" fill="none" stroke="#ff3b30" stroke-width="2"><path d="M4 15a8 8 0 1 1 16 0" stroke-linecap="round"/><path d="M12 15l4-5" stroke-linecap="round"/></svg>
-      118%
+      <svg viewBox="0 0 24 24" fill="none" stroke="#ff9500" stroke-width="2"><path d="M4 15a8 8 0 1 1 16 0" stroke-linecap="round"/><path d="M12 15l4-5" stroke-linecap="round"/></svg>
+      91%
     </span>
-    <span style="color:#8e8e93; font-size:11.5px;">Sat 10:21 PM</span>
+    <span style="color:#8e8e93; font-size:11.5px;">Sat 10:41 PM</span>
   </div>
 
   <div class="arrow"></div>
@@ -130,19 +130,25 @@
     <div class="header">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 15a8 8 0 1 1 16 0" stroke-linecap="round"/><path d="M12 15l4-5" stroke-linecap="round"/></svg>
       <span class="title">Claude usage</span>
-      <span class="time">10:21 PM</span>
+      <span class="time">10:41 PM</span>
     </div>
 
     <div class="bar-block">
-      <div class="bar-row"><span class="bar-label">5-hour window</span><span class="bar-sub">resets 1:00 AM &middot; 2h 39m</span></div>
-      <div class="track"><div class="fill red" style="width:100%"></div></div>
-      <div class="bar-foot"><span class="bar-tokens">23.66M / 20M</span><span class="bar-pct pct-red">118%</span></div>
+      <div class="bar-row"><span class="bar-label">5-hour window</span><span class="bar-sub">resets 1:00 AM &middot; 2h 19m</span></div>
+      <div class="track"><div class="fill orange" style="width:91%"></div></div>
+      <div class="bar-foot"><span class="bar-tokens">35.75M / 39.25M</span><span class="bar-pct pct-orange">91%</span></div>
+    </div>
+
+    <div class="bar-block">
+      <div class="bar-row"><span class="bar-label">This week &middot; 7d &middot; all models</span><span class="bar-sub">$366.50</span></div>
+      <div class="track"><div class="fill green" style="width:12%"></div></div>
+      <div class="bar-foot"><span class="bar-tokens">204.85M / 1.67B</span><span class="bar-pct pct-green">12%</span></div>
     </div>
 
     <div class="bar-block" style="margin-bottom:0;">
-      <div class="bar-row"><span class="bar-label">This week &middot; 7d &middot; all models</span><span class="bar-sub">$360.23</span></div>
-      <div class="track"><div class="fill green" style="width:48%"></div></div>
-      <div class="bar-foot"><span class="bar-tokens">192.76M / 400M</span><span class="bar-pct pct-green">48%</span></div>
+      <div class="bar-row"><span class="bar-label">Context window</span><span class="bar-sub">current conversation</span></div>
+      <div class="track"><div class="fill red" style="width:100%"></div></div>
+      <div class="bar-foot"><span class="bar-tokens">264.68K / 200K</span><span class="bar-pct pct-red">132%</span></div>
     </div>
 
     <div class="divider"></div>
@@ -154,22 +160,32 @@
 
     <div class="model-row">
       <div class="model-row-top">
-        <span class="dot purple"></span><span class="model-name">Opus</span>
+        <span class="dot purple"></span><span class="model-name">Opus 4.8</span>
         <span class="model-tok">169.6M</span><span class="model-cost">$345.61</span>
       </div>
       <div class="model-bar-row">
-        <div class="model-track"><div class="model-fill purple" style="width:42%"></div></div>
-        <span class="model-pct">42%</span>
+        <div class="model-track"><div class="model-fill purple" style="width:10.2%"></div></div>
+        <span class="model-pct">10%</span>
+      </div>
+    </div>
+    <div class="model-row">
+      <div class="model-row-top">
+        <span class="dot blue"></span><span class="model-name">Sonnet 5</span>
+        <span class="model-tok">23.51M</span><span class="model-cost">$12.36</span>
+      </div>
+      <div class="model-bar-row">
+        <div class="model-track"><div class="model-fill blue" style="width:1.4%"></div></div>
+        <span class="model-pct">1%</span>
       </div>
     </div>
     <div class="model-row" style="margin-bottom:0;">
       <div class="model-row-top">
-        <span class="dot blue"></span><span class="model-name">Sonnet</span>
-        <span class="model-tok">23.15M</span><span class="model-cost">$14.62</span>
+        <span class="dot blue"></span><span class="model-name">Sonnet 4.6</span>
+        <span class="model-tok">11.11M</span><span class="model-cost">$7.73</span>
       </div>
       <div class="model-bar-row">
-        <div class="model-track"><div class="model-fill blue" style="width:6%"></div></div>
-        <span class="model-pct">6%</span>
+        <div class="model-track"><div class="model-fill blue" style="width:0.7%"></div></div>
+        <span class="model-pct">1%</span>
       </div>
     </div>
 
@@ -177,8 +193,8 @@
 
     <div class="today-row">
       <span class="lbl">Today</span>
-      <span class="val">104.6M</span>
-      <span class="cost">$210.41</span>
+      <span class="val">116.1M</span>
+      <span class="cost">$215.88</span>
     </div>
 
     <div class="divider"></div>
@@ -191,15 +207,23 @@
       5h target
       <span class="stepper">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14" stroke-linecap="round"/></svg>
-        <span class="v">20M</span>
+        <span class="v">39.25M</span>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14" stroke-linecap="round"/></svg>
+      </span>
+    </div>
+    <div class="target-row">
+      Weekly target
+      <span class="stepper">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14" stroke-linecap="round"/></svg>
+        <span class="v">1.67B</span>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14" stroke-linecap="round"/></svg>
       </span>
     </div>
     <div class="target-row" style="margin-bottom:9px;">
-      Weekly target
+      Context window
       <span class="stepper">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14" stroke-linecap="round"/></svg>
-        <span class="v">400M</span>
+        <span class="v">200K</span>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14" stroke-linecap="round"/></svg>
       </span>
     </div>

@@ -3,6 +3,7 @@ import Foundation
 enum Fmt {
     static func compact(_ n: Int) -> String {
         let d = Double(n)
+        if d >= 1_000_000_000 { return String(format: "%.2fB", d / 1_000_000_000) }
         if d >= 1_000_000 { return String(format: "%.2fM", d / 1_000_000) }
         if d >= 1_000 { return String(format: "%.0fK", d / 1_000) }
         return "\(n)"

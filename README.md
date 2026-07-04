@@ -6,13 +6,14 @@ Reads transcripts directly from `~/.claude/projects/**/*.jsonl` and shows:
 
 - **5-hour limit window** — the rolling window Claude resets on, with a live countdown
 - **This week (7-day, all models)** usage against an adjustable token target
-- **Usage by model this week** — a collapsible table with a mini progress bar per model (Opus / Sonnet / Haiku), so you can see which model is eating your weekly budget
+- **Context window** — how full the current conversation is versus the model's context limit
+- **Usage by model this week** — a collapsible table with a mini progress bar per model, using real model/version names (e.g. "Opus 4.8", "Sonnet 5") pulled straight from the transcript, so you can see which model is eating your weekly budget
 - **Today's** tokens and estimated cost
 - Menu bar label toggle: tokens, %, or $
 
 Token counts are read directly from the same local log files Claude Code writes (`~/.claude/projects/**/*.jsonl`), deduped by request ID — they are exact, not estimates. The **cost** shown is a modeled *estimate of equivalent API list price* using published per-model rates (including the 1.25x / 2x / 0.1x multipliers for 5-min cache write, 1-hour cache write, and cache read) — useful for comparing which sessions or models are heavier, not an actual bill (Claude subscriptions are flat-rate).
 
-Anthropic doesn't expose your exact plan cap locally, so every limit bar uses a **target you set** (+/- steppers in the panel, persisted). Tune each until it matches where you actually hit that limit. If usage exceeds the target, the percentage is shown uncapped (e.g. 118%) even though the bar itself maxes out visually at 100%.
+Anthropic doesn't expose your exact plan quota via any local API, so the 5-hour and weekly targets are **calibrated, not guessed**: solved algebraically from a real reading of Claude's own app (e.g. "5h = 79%, weekly = 12%") against the exact token counts ClaudeMeter computed at that same instant. The +/- steppers in the panel let you re-tune either target if your plan changes or the numbers drift. If usage exceeds the target, the percentage is shown uncapped (e.g. 132%) even though the bar itself maxes out visually at 100%.
 
 ## Screenshot
 

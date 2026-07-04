@@ -37,6 +37,12 @@ struct Stats {
     var weekCost = 0.0
     var weekBudget = 400_000_000
 
+    // Current conversation's context size — the most recent turn's total
+    // prompt tokens (input + cache write + cache read), vs the model's
+    // context window. Distinct from the rate-limit windows above.
+    var contextTokens = 0
+    var contextBudget = 200_000
+
     // Per-model breakdown of the active 5h window (or today, if idle).
     var slices: [ModelSlice] = []
     // Per-model breakdown of the trailing 7 days — each fraction is that
@@ -51,6 +57,7 @@ struct Stats {
     }
     var blockFraction: Double { Stats.frac(blockTokens, blockBudget) }
     var weekFraction: Double { Stats.frac(weekTokens, weekBudget) }
+    var contextFraction: Double { Stats.frac(contextTokens, contextBudget) }
 
     static func empty(_ budget: Int) -> Stats {
         var s = Stats()
@@ -85,6 +92,12 @@ private func tokens(of e: Entry) -> Int {
     e.input + e.output + e.cacheWrite5m + e.cacheWrite1h + e.cacheRead
 }
 
+// Prompt-side tokens only (excludes output) — approximates how much of the
+// model's context window the current conversation occupies.
+private func contextSize(of e: Entry) -> Int {
+    e.input + e.cacheWrite5m + e.cacheWrite1h + e.cacheRead
+}
+
 enum UsageReader {
     private static let fiveHours: TimeInterval = 5 * 3600
 
@@ -96,6 +109,7 @@ enum UsageReader {
 
         var stats = Stats.empty(budget)
         stats.weekBudget = max(1, defaults.integer(forKey: "weekBudgetTokens"))
+        stats.contextBudget = max(1, defaults.integer(forKey: "contextBudgetTokens"))
         let now = Date()
 
         // --- Rolling 5-hour block detection (ccusage-style) ---
@@ -121,6 +135,12 @@ enum UsageReader {
             stats.blockActive = true
             stats.blockStart = last
             stats.blockEnd = last.addingTimeInterval(fiveHours)
+        }
+
+        // Current context size — the most recent turn overall (regardless of
+        // block/week), since that's the conversation actually on screen now.
+        if let latest = entries.last {
+            stats.contextTokens = contextSize(of: latest)
         }
 
         // --- Aggregate the windows ---
@@ -160,12 +180,12 @@ enum UsageReader {
 
         stats.slices = blockModelAgg
             .filter { $0.value.0 > 0 }
-            .map { ModelSlice(model: shortModel($0.key), tokens: $0.value.0, cost: $0.value.1, fraction: 0) }
+            .map { ModelSlice(model: displayModelName($0.key), tokens: $0.value.0, cost: $0.value.1, fraction: 0) }
             .sorted { $0.tokens > $1.tokens }
 
         stats.weekSlices = weekModelAgg
             .filter { $0.value.0 > 0 }
-            .map { ModelSlice(model: shortModel($0.key), tokens: $0.value.0, cost: $0.value.1,
+            .map { ModelSlice(model: displayModelName($0.key), tokens: $0.value.0, cost: $0.value.1,
                                fraction: Stats.frac($0.value.0, stats.weekBudget)) }
             .sorted { $0.tokens > $1.tokens }
 
@@ -243,11 +263,20 @@ enum UsageReader {
         return c.date(from: c.dateComponents([.year, .month, .day, .hour], from: d)) ?? d
     }
 
-    private static func shortModel(_ m: String) -> String {
-        let s = m.lowercased()
-        if s.contains("opus") { return "Opus" }
-        if s.contains("sonnet") { return "Sonnet" }
-        if s.contains("haiku") { return "Haiku" }
-        return m
+    // Turns a raw model id (e.g. "claude-opus-4-8", "claude-3-5-sonnet-20241022")
+    // into the display name Anthropic actually uses (e.g. "Opus 4.8", "Sonnet 3.5"):
+    // strip the "claude" prefix, the family keyword, and any 8-digit date suffix,
+    // then join whatever numeric parts remain with dots.
+    private static func displayModelName(_ m: String) -> String {
+        let families = ["opus", "sonnet", "haiku", "fable"]
+        let tokens = m.lowercased().split(separator: "-").map(String.init)
+        guard let familyToken = tokens.first(where: { families.contains($0) }) else { return m }
+
+        let versionParts = tokens.filter { part in
+            part != "claude" && part != familyToken && !(part.count == 8 && part.allSatisfy(\.isNumber))
+        }
+
+        let family = familyToken.prefix(1).uppercased() + familyToken.dropFirst()
+        return versionParts.isEmpty ? family : "\(family) \(versionParts.joined(separator: "."))"
     }
 }

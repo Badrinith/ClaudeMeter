@@ -8,9 +8,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let model = UsageModel()
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        // Anthropic doesn't expose these quotas via any local API, so these
+        // defaults are calibrated, not guessed: solved from the user's own
+        // Claude app readout (5h=79%, weekly=12%) against the exact token
+        // counts ClaudeMeter computed at that same instant (2026-07-04).
+        // Still user-adjustable — recalibrate here if your plan changes.
         UserDefaults.standard.register(defaults: [
-            "blockBudgetTokens": 20_000_000,
-            "weekBudgetTokens": 400_000_000,
+            "blockBudgetTokens": 39_251_738,
+            "weekBudgetTokens": 1_667_417_925,
+            "contextBudgetTokens": 200_000,
             "menuBarMode": MenuBarMode.percent.rawValue,
         ])
         NSApp.setActivationPolicy(.accessory)
