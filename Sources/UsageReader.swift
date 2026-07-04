@@ -1,12 +1,16 @@
 import Foundation
 
 // A single billable assistant turn pulled from a Claude Code transcript.
+// Cache-write tokens are split by TTL bucket because Anthropic prices them
+// differently (5-minute vs 1-hour cache), which the transcript records
+// separately under usage.cache_creation.
 struct Entry {
     let ts: Date
     let model: String
     let input: Int
     let output: Int
-    let cacheWrite: Int
+    let cacheWrite5m: Int
+    let cacheWrite1h: Int
     let cacheRead: Int
 }
 
@@ -15,6 +19,7 @@ struct ModelSlice: Identifiable {
     let model: String
     let tokens: Int
     let cost: Double
+    let fraction: Double
 }
 
 struct Stats {
@@ -22,10 +27,6 @@ struct Stats {
     var blockStart = Date()
     var blockEnd = Date()
     var blockTokens = 0
-    var blockInput = 0
-    var blockOutput = 0
-    var blockCacheWrite = 0
-    var blockCacheRead = 0
     var blockCost = 0.0
     var blockBudget = 20_000_000
 
@@ -36,18 +37,20 @@ struct Stats {
     var weekCost = 0.0
     var weekBudget = 400_000_000
 
-    var opusWeekTokens = 0
-    var opusWeekCost = 0.0
-    var opusWeekBudget = 250_000_000
-
+    // Per-model breakdown of the active 5h window (or today, if idle).
     var slices: [ModelSlice] = []
+    // Per-model breakdown of the trailing 7 days — each fraction is that
+    // model's share of the shared weekly budget, so the bars show how much
+    // of the week's allowance a given model alone is consuming.
+    var weekSlices: [ModelSlice] = []
 
-    private static func frac(_ used: Int, _ budget: Int) -> Double {
-        budget > 0 ? min(1.0, Double(used) / Double(budget)) : 0
+    // Uncapped — a bar can only render up to 100%, but the percentage text
+    // should still tell the truth when usage exceeds the target.
+    fileprivate static func frac(_ used: Int, _ budget: Int) -> Double {
+        budget > 0 ? Double(used) / Double(budget) : 0
     }
     var blockFraction: Double { Stats.frac(blockTokens, blockBudget) }
     var weekFraction: Double { Stats.frac(weekTokens, weekBudget) }
-    var opusWeekFraction: Double { Stats.frac(opusWeekTokens, opusWeekBudget) }
 
     static func empty(_ budget: Int) -> Stats {
         var s = Stats()
@@ -56,25 +59,30 @@ struct Stats {
     }
 }
 
-// Published API per-million-token prices, used only for a rough cost estimate.
-private func pricing(for model: String) -> (Double, Double, Double, Double) {
+// Published API per-million-token prices (input, output). Cache pricing is
+// derived from these via Anthropic's standard multipliers, which are the
+// same across models: 5-min cache write = 1.25x input, 1-hour cache write =
+// 2x input, cache read = 0.1x input.
+private func basePricing(for model: String) -> (input: Double, output: Double) {
     let m = model.lowercased()
-    if m.contains("opus")   { return (15.0, 75.0, 18.75, 1.50) }
-    if m.contains("haiku")  { return (0.80, 4.00,  1.00, 0.08) }
+    if m.contains("opus")  { return (15.0, 75.0) }
+    if m.contains("haiku") { return (0.80, 4.00) }
     // Sonnet + fallback
-    return (3.0, 15.0, 3.75, 0.30)
+    return (3.0, 15.0)
 }
 
 private func cost(of e: Entry) -> Double {
-    let (i, o, cw, cr) = pricing(for: e.model)
-    return (Double(e.input) * i
-          + Double(e.output) * o
-          + Double(e.cacheWrite) * cw
-          + Double(e.cacheRead) * cr) / 1_000_000.0
+    let p = basePricing(for: e.model)
+    let total = Double(e.input) * p.input
+              + Double(e.output) * p.output
+              + Double(e.cacheWrite5m) * p.input * 1.25
+              + Double(e.cacheWrite1h) * p.input * 2.0
+              + Double(e.cacheRead) * p.input * 0.1
+    return total / 1_000_000.0
 }
 
 private func tokens(of e: Entry) -> Int {
-    e.input + e.output + e.cacheWrite + e.cacheRead
+    e.input + e.output + e.cacheWrite5m + e.cacheWrite1h + e.cacheRead
 }
 
 enum UsageReader {
@@ -88,7 +96,6 @@ enum UsageReader {
 
         var stats = Stats.empty(budget)
         stats.weekBudget = max(1, defaults.integer(forKey: "weekBudgetTokens"))
-        stats.opusWeekBudget = max(1, defaults.integer(forKey: "opusWeekBudgetTokens"))
         let now = Date()
 
         // --- Rolling 5-hour block detection (ccusage-style) ---
@@ -119,44 +126,47 @@ enum UsageReader {
         // --- Aggregate the windows ---
         let dayStart = Calendar.current.startOfDay(for: now)
         let weekStart = now.addingTimeInterval(-7 * 86400)
-        var modelAgg: [String: (Int, Double)] = [:]
+        var blockModelAgg: [String: (Int, Double)] = [:]
+        var weekModelAgg: [String: (Int, Double)] = [:]
 
         for e in entries {
             let t = tokens(of: e)
             let c = cost(of: e)
 
             if e.ts >= dayStart { stats.todayTokens += t; stats.todayCost += c }
+
             if e.ts >= weekStart {
                 stats.weekTokens += t
                 stats.weekCost += c
-                if e.model.lowercased().contains("opus") {
-                    stats.opusWeekTokens += t
-                    stats.opusWeekCost += c
-                }
+                let prev = weekModelAgg[e.model] ?? (0, 0)
+                weekModelAgg[e.model] = (prev.0 + t, prev.1 + c)
             }
 
             if stats.blockActive, e.ts >= stats.blockStart, e.ts < stats.blockEnd {
                 stats.blockTokens += t
-                stats.blockInput += e.input
-                stats.blockOutput += e.output
-                stats.blockCacheWrite += e.cacheWrite
-                stats.blockCacheRead += e.cacheRead
                 stats.blockCost += c
-                let prev = modelAgg[e.model] ?? (0, 0)
-                modelAgg[e.model] = (prev.0 + t, prev.1 + c)
+                let prev = blockModelAgg[e.model] ?? (0, 0)
+                blockModelAgg[e.model] = (prev.0 + t, prev.1 + c)
             }
         }
 
         // If no active block, show today's model split instead so the panel isn't empty.
         if !stats.blockActive {
             for e in entries where e.ts >= dayStart {
-                let prev = modelAgg[e.model] ?? (0, 0)
-                modelAgg[e.model] = (prev.0 + tokens(of: e), prev.1 + cost(of: e))
+                let prev = blockModelAgg[e.model] ?? (0, 0)
+                blockModelAgg[e.model] = (prev.0 + tokens(of: e), prev.1 + cost(of: e))
             }
         }
 
-        stats.slices = modelAgg
-            .map { ModelSlice(model: shortModel($0.key), tokens: $0.value.0, cost: $0.value.1) }
+        stats.slices = blockModelAgg
+            .filter { $0.value.0 > 0 }
+            .map { ModelSlice(model: shortModel($0.key), tokens: $0.value.0, cost: $0.value.1, fraction: 0) }
+            .sorted { $0.tokens > $1.tokens }
+
+        stats.weekSlices = weekModelAgg
+            .filter { $0.value.0 > 0 }
+            .map { ModelSlice(model: shortModel($0.key), tokens: $0.value.0, cost: $0.value.1,
+                               fraction: Stats.frac($0.value.0, stats.weekBudget)) }
             .sorted { $0.tokens > $1.tokens }
 
         return stats
@@ -205,12 +215,21 @@ enum UsageReader {
 
                 guard let ts = isoFrac.date(from: tsStr) ?? iso.date(from: tsStr) else { return }
 
+                // cache_creation splits the write by TTL bucket; fall back to
+                // treating the whole write as 5-minute cache (the default TTL)
+                // when the transcript predates that breakdown being logged.
+                let cacheCreation = usage["cache_creation"] as? [String: Any]
+                let totalWrite = usage["cache_creation_input_tokens"] as? Int ?? 0
+                let write5m = cacheCreation?["ephemeral_5m_input_tokens"] as? Int
+                let write1h = cacheCreation?["ephemeral_1h_input_tokens"] as? Int
+
                 entries.append(Entry(
                     ts: ts,
                     model: msg["model"] as? String ?? "unknown",
                     input: usage["input_tokens"] as? Int ?? 0,
                     output: usage["output_tokens"] as? Int ?? 0,
-                    cacheWrite: usage["cache_creation_input_tokens"] as? Int ?? 0,
+                    cacheWrite5m: write5m ?? totalWrite,
+                    cacheWrite1h: write1h ?? 0,
                     cacheRead: usage["cache_read_input_tokens"] as? Int ?? 0
                 ))
             }

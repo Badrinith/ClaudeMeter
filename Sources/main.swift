@@ -11,7 +11,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         UserDefaults.standard.register(defaults: [
             "blockBudgetTokens": 20_000_000,
             "weekBudgetTokens": 400_000_000,
-            "opusWeekBudgetTokens": 250_000_000,
             "menuBarMode": MenuBarMode.percent.rawValue,
         ])
         NSApp.setActivationPolicy(.accessory)
@@ -30,7 +29,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // clipped and stays a consistent size across opens.
         hosting.sizingOptions = [.preferredContentSize]
         popover.contentViewController = hosting
-        popover.contentSize = NSSize(width: 258, height: 430)
+        popover.contentSize = NSSize(width: 262, height: 520)
 
         model.onUpdate = { [weak self] in self?.updateButton() }
         model.reload()

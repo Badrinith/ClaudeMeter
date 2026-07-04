@@ -2,6 +2,7 @@ import SwiftUI
 
 struct ContentView: View {
     @ObservedObject var model: UsageModel
+    @AppStorage("showWeeklyByModel") private var showWeeklyByModel = true
 
     private var s: Stats { model.stats }
 
@@ -17,12 +18,14 @@ struct ContentView: View {
                 } else {
                     idleBar
                 }
-                limitBar(label: "This week · 7d",
+                limitBar(label: "This week · 7d · all models",
                          sub: Fmt.money(s.weekCost),
                          tokens: s.weekTokens, budget: s.weekBudget, fraction: s.weekFraction)
-                limitBar(label: "Opus · 7d",
-                         sub: Fmt.money(s.opusWeekCost),
-                         tokens: s.opusWeekTokens, budget: s.opusWeekBudget, fraction: s.opusWeekFraction)
+            }
+
+            if !s.weekSlices.isEmpty {
+                Divider().opacity(0.4)
+                weeklyByModel
             }
 
             Divider().opacity(0.4)
@@ -37,11 +40,6 @@ struct ContentView: View {
                 Text(Fmt.money(s.todayCost))
                     .font(.system(size: 10))
                     .foregroundStyle(.secondary)
-            }
-
-            if !s.slices.isEmpty {
-                Divider().opacity(0.4)
-                models
             }
 
             Divider().opacity(0.4)
@@ -77,7 +75,7 @@ struct ContentView: View {
                     .font(.system(size: 10))
                     .foregroundStyle(.secondary)
             }
-            ProgressView(value: fraction)
+            ProgressView(value: min(fraction, 1.0))
                 .tint(color(fraction))
             HStack {
                 Text("\(Fmt.compact(tokens)) / \(Fmt.compact(budget))")
@@ -103,23 +101,45 @@ struct ContentView: View {
         }
     }
 
-    private var models: some View {
-        VStack(alignment: .leading, spacing: 5) {
-            Text(s.blockActive ? "This window by model" : "Today by model")
-                .font(.system(size: 10))
-                .foregroundStyle(.secondary)
-            ForEach(s.slices.prefix(3)) { slice in
-                HStack {
-                    Circle().fill(color(for: slice.model)).frame(width: 7, height: 7)
-                    Text(slice.model).font(.system(size: 11))
-                    Spacer()
-                    Text(Fmt.compact(slice.tokens))
-                        .font(.system(size: 11, weight: .medium))
-                    Text(Fmt.money(slice.cost))
-                        .font(.system(size: 10))
-                        .foregroundStyle(.secondary)
-                        .frame(width: 48, alignment: .trailing)
+    // Collapsible table: each model's share of the shared weekly budget,
+    // with its own mini progress bar — answers "which model is eating my week".
+    private var weeklyByModel: some View {
+        DisclosureGroup(isExpanded: $showWeeklyByModel) {
+            VStack(alignment: .leading, spacing: 7) {
+                ForEach(s.weekSlices) { slice in
+                    modelRow(slice)
                 }
+            }
+            .padding(.top, 6)
+        } label: {
+            Text("Usage by model · this week")
+                .font(.system(size: 11, weight: .medium))
+                .foregroundStyle(.secondary)
+        }
+        .tint(.secondary)
+    }
+
+    private func modelRow(_ slice: ModelSlice) -> some View {
+        VStack(alignment: .leading, spacing: 3) {
+            HStack {
+                Circle().fill(color(for: slice.model)).frame(width: 6, height: 6)
+                Text(slice.model)
+                    .font(.system(size: 11))
+                Spacer()
+                Text(Fmt.compact(slice.tokens))
+                    .font(.system(size: 11, weight: .medium))
+                Text(Fmt.money(slice.cost))
+                    .font(.system(size: 10))
+                    .foregroundStyle(.secondary)
+                    .frame(width: 44, alignment: .trailing)
+            }
+            HStack(spacing: 6) {
+                ProgressView(value: min(slice.fraction, 1.0))
+                    .tint(color(for: slice.model))
+                Text("\(Int(slice.fraction * 100))%")
+                    .font(.system(size: 9))
+                    .foregroundStyle(.secondary)
+                    .frame(width: 26, alignment: .trailing)
             }
         }
     }
@@ -148,9 +168,6 @@ struct ContentView: View {
             targetRow("Weekly target", value: s.weekBudget,
                       dec: { model.bumpWeekly(by: -50_000_000) },
                       inc: { model.bumpWeekly(by: 50_000_000) })
-            targetRow("Opus weekly", value: s.opusWeekBudget,
-                      dec: { model.bumpOpusWeekly(by: -25_000_000) },
-                      inc: { model.bumpOpusWeekly(by: 25_000_000) })
 
             Toggle(isOn: Binding(
                 get: { model.launchAtLogin },
